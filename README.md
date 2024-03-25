@@ -1,96 +1,36 @@
-# Obsidian Sample Plugin
+# Obsidian Title Linker Plugin
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+## Overview
+The Title Linker Plugin for Obsidian enriches your note-taking by creating wikilink connections automatically, enhancing navigation and coherence within your digital notebook. It identifies occurrences of note titles within the text of other notes, creating links for seamless discovery of related content. Everyone wants their notes to be linked via common words and titles, but manually linking every note is time-consuming. Obsidian Title Linker automates this at the push of a button.
 
-This project uses Typescript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in Typescript Definition format, which contains TSDoc comments describing what it does.
+## Features
 
-**Note:** The Obsidian API is still in early alpha and is subject to change at any time!
+- **Automatic Link Creation:** Generates wikilinks across your notes, enriching your vault's interconnectedness.
+- **Error Handling and Backups:** A robust backup system safeguards notes before modifications, ensuring data integrity. Care should be taken on systems with low storage, especially with large vaults, as backups require additional space.
+- **Selective Processing:** Configure exclusions to control the plugin's scope, preserving the integrity of specific folders or notes.
+- **Optimized Performance:** Processes all notes on the first run, then smartly targets new or updated content, streamlining subsequent operations.
+- **User Confirmations:** Confirmation prompts for all significant actions prevent unintended changes.
+- **Progress Notifications:** Keeps you informed from start to finish, with updates on milestones and a comprehensive summary upon completion.
+- **Smart Exclusions:** Does not create links in YAML front matter or within code blocks, preserving the syntax and purpose of these sections.
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+## Getting Started
 
-## First time developing plugins?
+1. **Installation:** Easily installable from Obsidian's community plugin directory.
+2. **Configuration:** Access the plugin settings to tailor exclusions and preferences according to your needs.
+3. **Initiation:** Activate the plugin through a ribbon icon or the command palette, with user confirmation ensuring deliberate action.
 
-Quick starting guide for new plugin devs:
+## Best Practices and Considerations
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+- **Vault Backup:** Always back up your vault before use, protecting against unintended modifications.
+- **Exclusion List:** Utilize the exclusion list feature to safeguard specific areas of your vault from changes.
+- **Initial Run Duration:** The first execution can be extensive, especially for large vaults, but is essential for establishing baseline links.
 
-## Releasing new releases
+## Contribution and Support
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+Contributions, feedback, and support are welcomed via the project's GitHub repository. Consider supporting further development through donations or sponsorships.
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+## Disclaimer
 
-## Adding your plugin to the community plugin list
+While extensive precautions are taken, the creators cannot be held responsible for any data loss or corruption. Ensure backups are in place before employing the plugin on essential data.
 
-- Check https://github.com/obsidianmd/obsidian-releases/blob/master/plugin-review.md
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
-
-If you have multiple URLs, you can also do:
-
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
-
-## API Documentation
-
-See https://github.com/obsidianmd/obsidian-api
+Experience an elevated note-taking journey with the Obsidian Title Linker Plugin, transforming your vault into a dynamically interconnected knowledge base.
