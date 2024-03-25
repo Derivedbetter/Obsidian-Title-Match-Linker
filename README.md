@@ -1,7 +1,7 @@
-# Obsidian Title Linker Plugin
+# Obsidian Title Match Linker Plugin
 
 ## Overview
-The Title Linker Plugin for Obsidian enriches your note-taking by creating wikilink connections automatically, enhancing navigation and coherence within your digital notebook. It identifies occurrences of note titles within the text of other notes, creating links for seamless discovery of related content. Everyone wants their notes to be linked via common words and titles, but manually linking every note is time-consuming. Obsidian Title Linker automates this at the push of a button.
+The Title Match Linker Plugin for Obsidian enriches your note-taking by creating wikilink connections automatically, enhancing navigation and coherence within your digital notebook. It identifies occurrences of note titles within the text of other notes, creating links for seamless discovery of related content. Everyone wants their notes to be linked via common words and titles, but manually linking every note is time-consuming. Obsidian Title Match Linker automates this at the push of a button.
 
 ## Features
 
