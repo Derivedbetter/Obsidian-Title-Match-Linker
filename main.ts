@@ -6,6 +6,7 @@ import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder }
 interface TitleMatchLinkerSettings {
     mySetting: string; // Placeholder for a setting, potentially used for future enhancements.
     excludedFolders: string[]; // List of folder paths to exclude from the link creation process.
+    enableAutoLinkOnClose: boolean; // New setting for auto link on note close
 }
 
 /**
@@ -14,6 +15,7 @@ interface TitleMatchLinkerSettings {
 const DEFAULT_SETTINGS: TitleMatchLinkerSettings = {
     mySetting: 'default', // Example default value. Adjust based on actual use case.
     excludedFolders: [], // By default, no folders are excluded.
+    enableAutoLinkOnClose: false, // Default setting to not auto link on note close.    
 };
 
 /**
@@ -62,6 +64,101 @@ export default class TitleMatchLinker extends Plugin {
                 }
             }
         });
+
+        // Add an option to the file context menu for running title match link on a single note
+        this.app.workspace.on('file-menu', (menu, file) => {
+            // Check if the clicked item is a markdown file
+            if (file instanceof TFile && file.extension === 'md') {
+                menu.addItem((item) => {
+                    item.setTitle('Run Title Match Link')
+                        .setIcon('link') // Choose an appropriate icon
+                        .onClick(async () => {
+                            // Run the link process for the selected note
+                            await this.linkSingleNote(file);
+                        });
+                });
+            }
+        });
+
+                /**
+         * Registers an event listener for the file context menu within the Obsidian workspace.
+         * This listener adds a "Revert Title Match Links" option to markdown files if a backup file exists,
+         * indicating changes were made by the Title Match Linker plugin. Selecting this option allows users to revert these changes.
+         */
+        this.app.workspace.on('file-menu', (menu, file) => {
+            // Check if the file is a markdown file.
+            if (file instanceof TFile && file.extension === 'md') {
+                // Construct the path for the potential backup file using the flattened file name.
+                // This follows the naming convention used by the plugin for backup files.
+                const flattenedBackupFileName = `SNC-${file.path.replace(/\//g, '__')}.bak`;
+                const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
+
+                // Attempt to find the backup file in the vault.
+                const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
+
+                // If the backup file exists, add the "Revert Title Match Links" option to the file's context menu.
+                if (backupFile instanceof TFile) {
+                    menu.addItem((item) => {
+                        item.setTitle('Revert Title Match Links')
+                            .setIcon('reset') // Set an appropriate icon for the menu item.
+                            .onClick(async () => {
+                                // Revert changes for this specific file using the plugin's functionality.
+                                await this.revertSingleNote(file);
+
+                                // Notify the user that the revert operation has been completed.
+                                new Notice(`Changes reverted for "${file.name}".`);
+                            });
+                    });
+                }
+            }
+        });
+
+
+                /**
+         * Registers an event listener for the file context menu within the Obsidian workspace.
+         * This listener adds a custom menu item to markdown files, allowing users to accept changes made by the Title Match Linker plugin.
+         * Accepting changes involves deleting the backup file and performing cleanup operations, such as removing now-empty folders.
+         */
+        this.app.workspace.on('file-menu', (menu, file) => {
+            // Ensure the menu item is added only for markdown files.
+            if (file instanceof TFile && file.extension === 'md') {
+                // Construct the path for a potential backup file based on a naming convention.
+                const flattenedBackupFileName = `SNC-${file.path.replace(/\//g, '__')}.bak`;
+                const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
+
+                // Attempt to retrieve the backup file from the vault.
+                const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
+
+                // If a backup file exists, it indicates that changes were made to this file using the plugin.
+                if (backupFile instanceof TFile) {
+                    // Add an option to the context menu for accepting the title match links.
+                    menu.addItem((item) => {
+                        item.setTitle('Accept Title Match Links')
+                            .setIcon('checkmark') // Sets an icon for the menu item (choose an appropriate icon).
+                            .onClick(async () => {
+                                // Perform cleanup operations after accepting changes.
+                                // This includes deleting the backup file and the change log file, and possibly removing empty folders.
+                                await this.cleanupAfterReversionOrAcceptance(file.path);
+
+                                // Notify the user that changes have been accepted and cleanup is complete.
+                                new Notice(`Changes accepted for "${file.name}". Cleanup completed.`);
+                            });
+                    });
+                }
+            }
+        });
+
+            
+        // Register the plugin command.
+        this.addCommand({
+            id: 'link-notes',
+            name: 'Link Notes',
+            callback: () => {
+                this.linkNotes();
+            }
+        });
+
+
 
         // Command for users to revert all changes made by the plugin.
         this.addCommand({
@@ -172,8 +269,120 @@ async linkNotes() {
     }
 }
 
+/**
+ * Processes a single note for title match linking.
+ * This method ensures necessary folders for backups and logging exist, checks if the note is within an excluded folder,
+ * creates a backup of the original content, processes the note for title match linking, logs changes for review,
+ * and cleans up unnecessary backup files if no links are added.
+ * 
+ * @param {TFile} file The note file to process.
+ */
+async linkSingleNote(file: TFile) {
+    // Ensure backup and logging folders exist.
+    await this.ensureSpecialFolderExists("_tmlbackups");
+    await this.ensureSpecialFolderExists("_tmldata");
+
+    // Skip processing for files in excluded folders.
+    if (this.settings.excludedFolders.some(folder => file.path.startsWith(folder))) {
+        console.log(`Skipping "${file.name}": located in an excluded folder.`);
+        new Notice(`Skipping "${file.name}": located in an excluded folder.`);
+        return;
+    }
+
+    // Read the original content of the file.
+    const originalContent = await this.app.vault.read(file);
+
+    // Use a compact naming convention for backup files for brevity.
+    const flattenedBackupFileName = `SNC-${file.path.replace(/\//g, '__')}.bak`;
+    const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
+
+    // Create a backup of the original content.
+    await this.app.vault.create(backupPath, originalContent).catch(error => {
+        console.error(`Failed to create backup for "${file.name}":`, error);
+        new Notice(`Error creating backup for "${file.name}". Check console for details.`);
+        return;
+    });
+
+    // Retrieve all markdown files, excluding the current file and those in excluded folders.
+    const allFiles = this.app.vault.getMarkdownFiles().filter(otherFile => 
+        otherFile !== file && !this.settings.excludedFolders.some(folder => otherFile.path.startsWith(folder))
+    );
+
+    // Process the file for title match linking.
+    const { content: modifiedContent, linksAdded } = this.processContent(originalContent, allFiles, file.basename);
+
+    if (linksAdded > 0) {
+        // Update the file with the modified content if links were added.
+        await this.app.vault.modify(file, modifiedContent);
+        
+        // Generate a log file with the changes made.
+        const logFileName = `SNC-Changes-${file.path.replace(/\//g, '__')}.md`;
+        const logFilePath = `_tmldata/${logFileName}`;
+        const logContent = `# Links Added to ${file.name}\n\n- ${linksAdded} links added.\n\n---\n\n${modifiedContent}`;
+
+        await this.app.vault.create(logFilePath, logContent).catch(error => {
+            console.error(`Failed to log changes for "${file.name}":`, error);
+            new Notice(`Error logging changes for "${file.name}". Check console for details.`);
+        });
+
+        // Notify the user about the links added and the location of the change log.
+        new Notice(`${linksAdded} links added to "${file.name}". Review changes in "${logFilePath}".`);
+    } else {
+        // If no links were added, delete the backup file and notify the user.
+        const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
+        if (backupFile instanceof TFile) {
+            await this.app.vault.delete(backupFile);
+            new Notice(`No links added to "${file.name}". Backup not needed and deleted.`);
+        } else {
+            console.error(`Backup file not found: ${backupPath}`);
+            new Notice(`No links added to "${file.name}". Error finding backup file for deletion.`);
+        }
+    }
+}
     
-    
+/**
+ * Reverts changes made to a single note by restoring its content from a backup file.
+ * This function looks for the backup file using a naming convention, restores the note's content if a backup is found,
+ * and notifies the user about the outcome of the reversion process.
+ * 
+ * @param {TFile} file The note file to revert changes for.
+ */
+/**
+ * Reverts changes made to a single note by restoring its content from a backup file.
+ * - Locates the backup file using a naming convention based on the note's path.
+ * - Restores the note's content from the backup if found.
+ * - Notifies the user about the success or failure of the reversion process.
+ * - Cleans up backup and change log files, and removes empty special folders.
+ * 
+ * @param {TFile} file The note file to revert changes for.
+ */
+async revertSingleNote(file: TFile) {
+    // Use the flattened naming convention to locate the backup file.
+    const flattenedBackupFileName = `SNC-${file.path.replace(/\//g, '__')}.bak`;
+    const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
+
+    // Attempt to locate the backup file within the _tmlbackups folder.
+    const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
+    if (backupFile instanceof TFile) {
+        try {
+            // Read the backup file's content.
+            const backupContent = await this.app.vault.read(backupFile);
+            // Restore the original file with the backup content.
+            await this.app.vault.modify(file, backupContent);
+            // Notify the user of successful reversion.
+            new Notice(`"${file.name}" has been reverted to its previous state.`);
+            // Clean up after successful reversion.
+            await this.cleanupAfterReversionOrAcceptance(file.path);
+        } catch (error) {
+            console.error(`Error reverting "${file.name}":`, error);
+            new Notice(`Error reverting "${file.name}". See console for details.`);
+        }
+    } else {
+        // Notify the user if the backup file is not found.
+        new Notice(`Backup not found for "${file.name}". Reversion not possible.`);
+    }
+}
+
     
     /**
  * Appends details of the changes made during the link creation process to a Markdown file for review.
@@ -302,6 +511,68 @@ acceptAllChanges() {
 }
 
     
+
+/**
+ * Cleans up after the reversion or acceptance of changes for a single note.
+ * This involves deleting the backup file and the change log file associated with the note.
+ * If the _tmlbackups and _tmldata folders become empty as a result, they are also deleted.
+ * The user is notified after each successful deletion.
+ *
+ * @param {string} filePath - The path of the file for which changes were reverted or accepted.
+ */
+async cleanupAfterReversionOrAcceptance(filePath: string) {
+    // Replace slashes with underscores to create a flattened file name.
+    // This is used to construct the backup and change log file paths.
+    const flattenedFileName = filePath.replace(/\//g, '__');
+    
+    // Construct paths for the backup and change log files using the flattened file name.
+    const backupPath = `_tmlbackups/SNC-${flattenedFileName}.bak`;
+    const changeLogPath = `_tmldata/SNC-Changes-${flattenedFileName}.md`;
+
+    // Attempt to delete the backup file and notify the user.
+    const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
+    if (backupFile instanceof TFile) {
+        await this.app.vault.delete(backupFile)
+            .then(() => new Notice(`Backup file deleted: ${backupPath}`))
+            .catch(error => {
+                console.error(`Error deleting backup file: ${backupPath}`, error);
+                new Notice(`Error deleting backup file: ${backupPath}. Check console for details.`);
+            });
+    }
+
+    // Attempt to delete the change log file and notify the user.
+    const changeLogFile = this.app.vault.getAbstractFileByPath(changeLogPath);
+    if (changeLogFile instanceof TFile) {
+        await this.app.vault.delete(changeLogFile)
+            .then(() => new Notice(`Change log file deleted: ${changeLogPath}`))
+            .catch(error => {
+                console.error(`Error deleting change log file: ${changeLogPath}`, error);
+                new Notice(`Error deleting change log file: ${changeLogPath}. Check console for details.`);
+            });
+    }
+
+    // Check if the _tmlbackups and _tmldata folders are empty and delete them if they are.
+    // This is done by checking if there are no files or folders within them.
+    await Promise.all(['_tmlbackups', '_tmldata'].map(async (folderName) => {
+        const folder = this.app.vault.getAbstractFileByPath(folderName);
+        if (folder instanceof TFolder) {
+            const contents = await this.app.vault.adapter.list(folder.path);
+            if (contents.files.length === 0 && contents.folders.length === 0) {
+                // Use the folder's path with the deleteFolderAndContents function to delete the folder.
+                await this.deleteFolderAndContents(folder.path)
+                    .then(() => new Notice(`Deleted empty folder: ${folderName}`))
+                    .catch(error => {
+                        console.error(`Error deleting folder: ${folderName}`, error);
+                        new Notice(`Error deleting folder: ${folderName}. Check console for details.`);
+                    });
+            }
+        }
+    }));
+}
+
+
+
+
     
     
     /**
@@ -470,10 +741,6 @@ processLineForLinking(line: string, files: TFile[], currentBasename: string): {m
 
     return { modifiedLine, linksAdded };
 }
-
-      
-    
-
     /**
  * Asynchronously loads the plugin settings from the Obsidian data storage.
  * Postpones the check for the existence of excluded folders to ensure the vault is fully loaded.
@@ -1014,6 +1281,8 @@ class SettingTab extends PluginSettingTab {
                 this.plugin.acceptAllChanges();
             }).open();
         });
+
+        
     }
 }
 

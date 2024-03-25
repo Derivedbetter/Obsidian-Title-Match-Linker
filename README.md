@@ -1,36 +1,54 @@
 # Obsidian Title Match Linker Plugin
 
 ## Overview
-The Title Match Linker Plugin for Obsidian enriches your note-taking by creating wikilink connections automatically, enhancing navigation and coherence within your digital notebook. It identifies occurrences of note titles within the text of other notes, creating links for seamless discovery of related content. Everyone wants their notes to be linked via common words and titles, but manually linking every note is time-consuming. Obsidian Title Match Linker automates this at the push of a button.
+
+The Title Match Linker Plugin for Obsidian revolutionizes your note-taking experience by automatically generating wikilinks between your notes. It scans your notes for occurrences of other note titles and transforms them into clickable links. This process not only enhances navigation within your digital notebook but also fosters an interconnected knowledge base.
 
 ## Features
 
-- **Automatic Link Creation:** Generates wikilinks across your notes, enriching your vault's interconnectedness.
-- **Error Handling and Backups:** A robust backup system safeguards notes before modifications, ensuring data integrity. Care should be taken on systems with low storage, especially with large vaults, as backups require additional space.
-- **Selective Processing:** Configure exclusions to control the plugin's scope, preserving the integrity of specific folders or notes.
-- **Optimized Performance:** Processes all notes on the first run, then smartly targets new or updated content, streamlining subsequent operations.
-- **User Confirmations:** Confirmation prompts for all significant actions prevent unintended changes.
-- **Progress Notifications:** Keeps you informed from start to finish, with updates on milestones and a comprehensive summary upon completion.
-- **Smart Exclusions:** Does not create links in YAML front matter or within code blocks, preserving the syntax and purpose of these sections.
+- **Automatic Link Creation:** Dynamically generates wikilinks across your notes, enhancing the interconnectedness of your vault.
+- **Selective Processing:** Enables customization to exclude specific folders from the link creation process, allowing for targeted note processing.
+- **Backup and Review System:** Automatically creates backups of notes and logs changes for safe review, ensuring data integrity.
+- **User Control:** Provides options to run the title match link process on individual notes, accept changes, or revert them, offering granular control over content modifications.
+- **Smart Performance:** Optimizes operations for large vaults by targeting new or updated content after the initial full vault processing.
+- **User Engagement:** Employs confirmations for actions and detailed progress indicators, engaging users throughout the process and ensuring transparency.
 
 ## Getting Started
 
-1. **Installation:** Easily installable from Obsidian's community plugin directory.
-2. **Configuration:** Access the plugin settings to tailor exclusions and preferences according to your needs.
-3. **Initiation:** Activate the plugin through a ribbon icon or the command palette, with user confirmation ensuring deliberate action.
+1. **Installation:** Available for installation from Obsidian's community plugin directory.
+2. **Configuration:** Visit the plugin settings in the Obsidian settings pane to fine-tune exclusions and other preferences according to your needs.
+
+## Usage
+
+The Title Match Linker Plugin can be used both for processing your entire vault or specific notes, providing flexibility based on your needs:
+
+### Bulk Link Creation
+
+1. **Start the Process:** Activate the plugin through the ribbon icon or command palette. A confirmation dialog ensures that you intentionally initiate the link creation process.
+2. **Review and Accept Changes:** After the process completes, review the changes in the generated `ReviewChanges.md` file within the `_tmldata` folder. Accept or revert changes as necessary from the plugin's command palette options.
+
+### Single Note Processing
+
+1. **Context Menu Options:** Right-click on a note to access specific options:
+   - **Run Title Match Link:** Initiates the link creation process for the selected note.
+   - **Revert Title Match Links:** Available if a backup exists for the note, allowing you to revert to the original content.
+   - **Accept Title Match Links:** Accepts the changes made by the plugin, removing the backup and updating the note with the created links.
+
+2. **Review and Cleanup:** Regardless of the method, changes are logged, and backups are created. Review the `ReviewChanges.md` file and the backups in the `_tmlbackups` folder. Use the plugin commands to accept all changes or revert them, which cleans up the backups and change logs.
 
 ## Best Practices and Considerations
 
-- **Vault Backup:** Always back up your vault before use, protecting against unintended modifications.
-- **Exclusion List:** Utilize the exclusion list feature to safeguard specific areas of your vault from changes.
-- **Initial Run Duration:** The first execution can be extensive, especially for large vaults, but is essential for establishing baseline links.
+- **Backup Your Vault:** It's crucial to back up your vault regularly, especially before using new plugins or making bulk changes.
+- **Use Exclusions Wisely:** Protect structured notes or specific folders from automatic linking by adding them to the exclusion list in the plugin settings.
+- **Review Changes:** Utilize the generated change logs to verify and review link additions or modifications for accuracy.
+- **Be Mindful of Storage Space:** Especially for large vaults, the automatic backup process requires additional storage. Be cautious if your device has limited storage space.
 
 ## Contribution and Support
 
-Contributions, feedback, and support are welcomed via the project's GitHub repository. Consider supporting further development through donations or sponsorships.
+Contributions, feedback, and support are welcomed through the project's GitHub repository. Your input helps improve the plugin for everyone in the Obsidian community.
 
 ## Disclaimer
 
-While extensive precautions are taken, the creators cannot be held responsible for any data loss or corruption. Ensure backups are in place before employing the plugin on essential data.
+While the plugin is designed with safety and data integrity in mind, the creators cannot be held responsible for unintended modifications. Always maintain backups of your important data.
 
-Experience an elevated note-taking journey with the Obsidian Title Linker Plugin, transforming your vault into a dynamically interconnected knowledge base.
+Leverage the power of automated wikilinks with the Obsidian Title Match Linker Plugin, transforming your vault into a richly interconnected knowledge base.
