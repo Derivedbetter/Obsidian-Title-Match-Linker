@@ -6,7 +6,7 @@ import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder }
 interface TitleMatchLinkerSettings {
     mySetting: string; // Placeholder for a setting, potentially used for future enhancements.
     excludedFolders: string[]; // List of folder paths to exclude from the link creation process.
-    enableAutoLinkOnClose: boolean; // New setting for auto link on note close
+
 }
 
 /**
@@ -15,7 +15,7 @@ interface TitleMatchLinkerSettings {
 const DEFAULT_SETTINGS: TitleMatchLinkerSettings = {
     mySetting: 'default', // Example default value. Adjust based on actual use case.
     excludedFolders: [], // By default, no folders are excluded.
-    enableAutoLinkOnClose: false, // Default setting to not auto link on note close.    
+    
 };
 
 /**
