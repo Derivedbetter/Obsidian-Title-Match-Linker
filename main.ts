@@ -464,35 +464,55 @@ startLinkCreationProcess() {
 }
 
 /**
- * Allows the user to accept all changes made by the plugin.
- * This action will delete all backup files, signifying that the user has reviewed and accepted all modifications.
+ * Allows the user to accept all changes made by the plugin, which includes deleting all backup files and optionally the data folder.
+ * This function provides user confirmation before proceeding with the deletion of backup files and folders,
+ * ensuring that the user is aware of the irreversible nature of this action.
  */
 acceptAllChanges() {
-    // Enhanced confirmation modal to inform the user about the implications of their choices.
+    // Confirmation message detailing the actions to be taken and asking for user consent.
     const message = `Are you sure you want to accept all changes? This will delete all backup files in the _tmlbackups folder. 
-    Do you also want to delete the _tmldata folder? 
-    Keeping the _tmldata folder allows you to review the 'ReviewChanges.md' file, which lists all automated link creations for future reference or auditing.`;
+Do you also want to delete the _tmldata folder? 
+Keeping the _tmldata folder allows you to review the 'ReviewChanges.md' file, which lists all automated link creations for future reference or auditing.`;
 
+    // Display a confirmation modal to the user.
     new ExtendedConfirmationModal(this.app, message, async (alsoDeleteData) => {
         try {
-            // Always delete the _tmlbackups folder.
-            await this.deleteFolderAndContents("_tmlbackups");
-            
+            // Initialize the progress modal to inform the user about the ongoing deletion process.
+            // The total number of steps is dependent on whether the _tmldata folder will also be deleted.
+            const steps = 1 + (alsoDeleteData ? 1 : 0);
+            const progressModal = new ProgressModal(this.app, steps, 'acceptance');
+            progressModal.open();
+
+            // Delete the _tmlbackups folder and its contents.
+            await this.deleteFolderAndContents("_tmlbackups").then(() => {
+                progressModal.updateProgress("_tmlbackups folder");
+                new Notice("_tmlbackups folder and its contents have been successfully deleted.");
+            }).catch(error => {
+                console.error("Error deleting the _tmlbackups folder:", error);
+                new Notice("Error deleting the _tmlbackups folder. Check console for details.");
+            });
+
             // Conditionally delete the _tmldata folder based on the user's choice.
             if (alsoDeleteData) {
-                await this.deleteFolderAndContents("_tmldata");
-                new Notice("All changes accepted. Backup and data folders deleted.");
-            } else {
-                // Inform the user that the _tmldata folder is retained for review.
-                new Notice("All changes accepted. Backup folder deleted. The _tmldata folder is retained for your review.");
+                await this.deleteFolderAndContents("_tmldata").then(() => {
+                    progressModal.updateProgress("_tmldata folder");
+                    new Notice("_tmldata folder and its contents have been successfully deleted.");
+                }).catch(error => {
+                    console.error("Error deleting the _tmldata folder:", error);
+                    new Notice("Error deleting the _tmldata folder. Check console for details.");
+                });
             }
+
+            // Finalize the progress modal and inform the user that the acceptance process is complete.
+            progressModal.completeProcess();
+            new Notice("All changes accepted. Backup and optionally data folders deleted.");
         } catch (error) {
+            // Handle any unexpected errors during the process.
             console.error("Error during the acceptance of changes:", error);
             new Notice("An error occurred while accepting changes. Check the console for details.");
         }
     }).open();
 }
-
     
 
 /**
@@ -919,7 +939,9 @@ class ProgressModal extends Modal {
         contentEl.empty(); // Clear existing content.
 
         // Dynamic title based on operation type.
-        const titleText = this.operationType === 'linkCreation' ? 'Link Creation Progress' : 'Reversion Progress';
+        const titleText = this.operationType === 'linkCreation' ? 'Link Creation Progress' : 
+                          (this.operationType === 'acceptance' ? 'Link Acceptance Progress' : 'Reversion Progress');
+
         contentEl.createEl('h2', { text: titleText });
 
         // Progress bar setup.
