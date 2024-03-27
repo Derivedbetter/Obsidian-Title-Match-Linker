@@ -65,88 +65,71 @@ export default class TitleMatchLinker extends Plugin {
             }
         });
 
-        // Add an option to the file context menu for running title match link on a single note
+        /**
+         * Registers a single event listener for the 'file-menu' event within the Obsidian workspace.
+         * This listener dynamically adds context menu items to Markdown files for different actions:
+         * - Running the title match link process on a single note.
+         * - Reverting changes made by the Title Match Linker plugin if a backup file exists.
+         * - Accepting changes made by the plugin and performing cleanup if a backup file exists.
+         */
         this.app.workspace.on('file-menu', (menu, file) => {
-            // Check if the clicked item is a markdown file
-            if (file instanceof TFile && file.extension === 'md') {
-                menu.addItem((item) => {
-                    item.setTitle('Run Title Match Link')
-                        .setIcon('link') // Choose an appropriate icon
-                        .onClick(async () => {
-                            // Run the link process for the selected note
+            // Ensure the menu items are added only for Markdown files.
+            if (!(file instanceof TFile) || file.extension !== 'md') return;
+
+            // Common logic to check for the existence of a backup file for this note.
+            const flattenedBackupFileName = `SNC-${file.path.replace(/\//g, '__')}.bak`;
+            const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
+            const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
+            const backupFileExists = backupFile instanceof TFile;
+
+            // Add "Run Title Match Link" option.
+            menu.addItem((item) => {
+                item.setTitle('Run Title Match Link')
+                    .setIcon('link')
+                    .onClick(async () => {
+                        try {
                             await this.linkSingleNote(file);
+                            new Notice(`Title match linking process initiated for "${file.name}".`);
+                        } catch (error) {
+                            console.error(`Error running title match link on "${file.name}":`, error);
+                            new Notice(`Error running title match link on "${file.name}". Check console for details.`);
+                        }
+                    });
+            });
+
+            // Conditionally add "Revert Title Match Links" option if a backup file exists.
+            if (backupFileExists) {
+                menu.addItem((item) => {
+                    item.setTitle('Revert Title Match Links')
+                        .setIcon('reset')
+                        .onClick(async () => {
+                            try {
+                                await this.revertSingleNote(file);
+                                new Notice(`Changes reverted for "${file.name}".`);
+                            } catch (error) {
+                                console.error(`Error reverting changes for "${file.name}":`, error);
+                                new Notice(`Error reverting changes for "${file.name}". Check console for details.`);
+                            }
+                        });
+                });
+
+                // Conditionally add "Accept Title Match Links" option if a backup file exists.
+                menu.addItem((item) => {
+                    item.setTitle('Accept Title Match Links')
+                        .setIcon('checkmark')
+                        .onClick(async () => {
+                            try {
+                                await this.cleanupAfterReversionOrAcceptance(file.path);
+                                new Notice(`Changes accepted for "${file.name}". Cleanup completed.`);
+                            } catch (error) {
+                                console.error(`Error accepting changes for "${file.name}":`, error);
+                                new Notice(`Error accepting changes for "${file.name}". Check console for details.`);
+                            }
                         });
                 });
             }
         });
 
-                /**
-         * Registers an event listener for the file context menu within the Obsidian workspace.
-         * This listener adds a "Revert Title Match Links" option to markdown files if a backup file exists,
-         * indicating changes were made by the Title Match Linker plugin. Selecting this option allows users to revert these changes.
-         */
-        this.app.workspace.on('file-menu', (menu, file) => {
-            // Check if the file is a markdown file.
-            if (file instanceof TFile && file.extension === 'md') {
-                // Construct the path for the potential backup file using the flattened file name.
-                // This follows the naming convention used by the plugin for backup files.
-                const flattenedBackupFileName = `SNC-${file.path.replace(/\//g, '__')}.bak`;
-                const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
-
-                // Attempt to find the backup file in the vault.
-                const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
-
-                // If the backup file exists, add the "Revert Title Match Links" option to the file's context menu.
-                if (backupFile instanceof TFile) {
-                    menu.addItem((item) => {
-                        item.setTitle('Revert Title Match Links')
-                            .setIcon('reset') // Set an appropriate icon for the menu item.
-                            .onClick(async () => {
-                                // Revert changes for this specific file using the plugin's functionality.
-                                await this.revertSingleNote(file);
-
-                                // Notify the user that the revert operation has been completed.
-                                new Notice(`Changes reverted for "${file.name}".`);
-                            });
-                    });
-                }
-            }
-        });
-
-
-                /**
-         * Registers an event listener for the file context menu within the Obsidian workspace.
-         * This listener adds a custom menu item to markdown files, allowing users to accept changes made by the Title Match Linker plugin.
-         * Accepting changes involves deleting the backup file and performing cleanup operations, such as removing now-empty folders.
-         */
-        this.app.workspace.on('file-menu', (menu, file) => {
-            // Ensure the menu item is added only for markdown files.
-            if (file instanceof TFile && file.extension === 'md') {
-                // Construct the path for a potential backup file based on a naming convention.
-                const flattenedBackupFileName = `SNC-${file.path.replace(/\//g, '__')}.bak`;
-                const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
-
-                // Attempt to retrieve the backup file from the vault.
-                const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
-
-                // If a backup file exists, it indicates that changes were made to this file using the plugin.
-                if (backupFile instanceof TFile) {
-                    // Add an option to the context menu for accepting the title match links.
-                    menu.addItem((item) => {
-                        item.setTitle('Accept Title Match Links')
-                            .setIcon('checkmark') // Sets an icon for the menu item (choose an appropriate icon).
-                            .onClick(async () => {
-                                // Perform cleanup operations after accepting changes.
-                                // This includes deleting the backup file and the change log file, and possibly removing empty folders.
-                                await this.cleanupAfterReversionOrAcceptance(file.path);
-
-                                // Notify the user that changes have been accepted and cleanup is complete.
-                                new Notice(`Changes accepted for "${file.name}". Cleanup completed.`);
-                            });
-                    });
-                }
-            }
-        });
 
             
         // Register the plugin command.
