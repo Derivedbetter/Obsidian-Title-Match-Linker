@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS: TitleMatchLinkerSettings = {
  */
 export default class TitleMatchLinker extends Plugin {
     settings: TitleMatchLinkerSettings;
-
+    
     /**
      * Plugin loading lifecycle method. Called when the plugin is loaded by Obsidian.
      */
@@ -411,6 +411,28 @@ async appendToReviewChangesMarkdown(changes: { filePath: string, modifiedContent
         new Notice("An error occurred while recording review changes. Check console for details.");
     }
 }
+
+/**
+ * Checks if there are any backup files (with a .bak extension) in the _tmlbackups folder.
+ * This function is used to determine whether certain actions related to backup files,
+ * such as reverting changes or accepting all changes, are applicable. It ensures that only
+ * backup files created by the TitleMatchLinker plugin are considered by specifically checking
+ * within the designated backup folder.
+ *
+ * @returns {Promise<boolean>} A promise that resolves with `true` if backup files exist in the _tmlbackups folder, or `false` otherwise.
+ */
+async doBakFilesExist() {
+    // Define the path to the _tmlbackups folder
+    const backupFolderPath = "_tmlbackups/";
+
+    // Retrieve all files within the _tmlbackups folder
+    const backupFiles = this.app.vault.getFiles().filter(file => 
+        file.path.startsWith(backupFolderPath) && file.path.endsWith('.bak'));
+
+    // Return true if there are any backup files within the folder, false otherwise
+    return backupFiles.length > 0;
+}
+
 
     
     
@@ -1003,7 +1025,9 @@ class ProgressModal extends Modal {
 
 /**
  * A modal that provides options for link creation, reverting changes, and accepting all changes.
- * It allows users to interact with the plugin's core functionalities directly from the UI.
+ * It enables users to access core functionalities of the TitleMatchLinker plugin through a user interface.
+ * The modal dynamically updates its options based on the presence of backup files, 
+ * ensuring actions like revert and accept changes are only offered when applicable.
  */
 class ActionModal extends Modal {
     plugin: TitleMatchLinker;
@@ -1014,45 +1038,51 @@ class ActionModal extends Modal {
     }
 
     /**
-     * Sets up the modal's content when it's opened, including buttons for various actions.
+     * Prepares and displays the modal's content when it's opened. This includes
+     * dynamically adding buttons for various actions based on the current state of backup files.
      */
-    onOpen() {
-        this.contentEl.createEl('h2', { text: 'Title Link Options' });
+    async onOpen() {
+        const { contentEl } = this;
+        contentEl.empty(); // Ensure the content is fresh on each open.
 
-        // Helper function to create buttons with descriptive text.
+        contentEl.createEl('h2', { text: 'Title Link Options' });
+
+        // Helper function for creating action buttons with associated descriptions and callbacks.
         const createButtonWithDescription = (buttonText: string, descriptionText: string, onClickCallback: () => void) => {
-            const buttonWrapper = this.contentEl.createDiv({ cls: 'action-button-wrapper' });
+            const buttonWrapper = contentEl.createDiv({ cls: 'action-button-wrapper' });
             const button = buttonWrapper.createEl('button', { text: buttonText, cls: 'mod-cta' });
-            button.addEventListener('click', onClickCallback);
-
-            // Directly set the description text on a new div element without using a redundant variable.
+            button.addEventListener('click', () => {
+                try {
+                    onClickCallback();
+                } catch (error) {
+                    console.error(error);
+                    new Notice('An error occurred. Please check the console for more details.');
+                }
+            });
             buttonWrapper.createEl('div', { text: descriptionText, cls: 'action-button-description' });
         };
 
-        // Button to initiate the link creation process.
+        // Always include the option to initiate the link creation process.
         createButtonWithDescription('Start Link Creation', 'Initiates the link creation process.', async () => {
-            const canProceed = await this.plugin.canProceedWithLinkCreation();
-            if (canProceed) {
+            if (await this.plugin.canProceedWithLinkCreation()) {
                 this.plugin.startLinkCreationProcess();
             }
             this.close();
         });
 
-        // Button to revert all changes made by the plugin.
-        createButtonWithDescription('Revert Changes', 'Reverts all changes made by the plugin.', () => {
-            new ConfirmationModal(this.app, "Are you sure you want to revert all changes? This action cannot be undone.", () => {
-                this.plugin.revertChanges();
+        // Dynamically add "Revert Changes" and "Accept All Changes" options if applicable.
+        const bakFilesExist = await this.plugin.doBakFilesExist();
+        if (bakFilesExist) {
+            createButtonWithDescription('Revert Changes', 'Reverts all changes made by the plugin.', async () => {
+                await this.plugin.revertChanges();
                 this.close();
-            }).open();
-        });
+            });
 
-        // Button to accept all changes and delete backup files.
-        createButtonWithDescription('Accept All Changes', 'Accepts all changes and deletes backup files. This action is irreversible.', () => {
-            new ConfirmationModal(this.app, "Are you sure you want to accept all changes and delete all backup files? This action cannot be undone.", () => {
-                this.plugin.acceptAllChanges();
+            createButtonWithDescription('Accept All Changes', 'Accepts all changes and deletes backup files. This action is irreversible.', async () => {
+                await this.plugin.acceptAllChanges();
                 this.close();
-            }).open();
-        });
+            });
+        }
     }
 
     /**
@@ -1062,6 +1092,7 @@ class ActionModal extends Modal {
         this.contentEl.empty();
     }
 }
+
 
 /**
  * Custom modal for displaying a confirmation dialog with "Confirm" and "Cancel" buttons.
