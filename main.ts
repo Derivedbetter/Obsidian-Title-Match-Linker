@@ -77,7 +77,7 @@ export default class TitleMatchLinker extends Plugin {
             if (!(file instanceof TFile) || file.extension !== 'md') return;
 
             // Common logic to check for the existence of a backup file for this note.
-            const flattenedBackupFileName = `SNC-${file.path.replace(/\//g, '__')}.bak`;
+            const flattenedBackupFileName = file.path.replace(/\//g, '__') + '.bak';
             const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
             const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
             const backupFileExists = backupFile instanceof TFile;
@@ -276,7 +276,7 @@ async linkSingleNote(file: TFile) {
     const originalContent = await this.app.vault.read(file);
 
     // Use a compact naming convention for backup files for brevity.
-    const flattenedBackupFileName = `SNC-${file.path.replace(/\//g, '__')}.bak`;
+    const flattenedBackupFileName = file.path.replace(/\//g, '__') + '.bak';
     const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
 
     // Create a backup of the original content.
@@ -341,7 +341,7 @@ async linkSingleNote(file: TFile) {
  */
 async revertSingleNote(file: TFile) {
     // Use the flattened naming convention to locate the backup file.
-    const flattenedBackupFileName = `SNC-${file.path.replace(/\//g, '__')}.bak`;
+    const flattenedBackupFileName = file.path.replace(/\//g, '__') + '.bak';
     const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
 
     // Attempt to locate the backup file within the _tmlbackups folder.
