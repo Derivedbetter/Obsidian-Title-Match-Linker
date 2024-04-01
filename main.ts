@@ -83,19 +83,21 @@ export default class TitleMatchLinker extends Plugin {
             const backupFileExists = backupFile instanceof TFile;
 
             // Add "Run Title Match Link" option.
-            menu.addItem((item) => {
-                item.setTitle('Run Title Match Link')
-                    .setIcon('link')
-                    .onClick(async () => {
-                        try {
-                            await this.linkSingleNote(file);
-                            new Notice(`Title match linking process initiated for "${file.name}".`);
-                        } catch (error) {
-                            console.error(`Error running title match link on "${file.name}":`, error);
-                            new Notice(`Error running title match link on "${file.name}". Check console for details.`);
-                        }
-                    });
-            });
+            if (!backupFileExists) {
+                menu.addItem((item) => {
+                    item.setTitle('Run Title Match Link')
+                        .setIcon('link')
+                        .onClick(async () => {
+                            try {
+                                await this.linkSingleNote(file);
+                                new Notice(`Title match linking process initiated for "${file.name}".`);
+                            } catch (error) {
+                                console.error(`Error running title match link on "${file.name}":`, error);
+                                new Notice(`Error running title match link on "${file.name}". Check console for details.`);
+                            }
+                        });
+                });
+            }
 
             // Conditionally add "Revert Title Match Links" option if a backup file exists.
             if (backupFileExists) {
@@ -113,13 +115,19 @@ export default class TitleMatchLinker extends Plugin {
                         });
                 });
 
-                // Conditionally add "Accept Title Match Links" option if a backup file exists.
                 menu.addItem((item) => {
                     item.setTitle('Accept Title Match Links')
                         .setIcon('checkmark')
                         .onClick(async () => {
                             try {
-                                await this.cleanupAfterReversionOrAcceptance(file.path);
+                                // Construct paths for the backup and change log files using the flattened file name.
+                                const flattenedBackupFileName = file.path.replace(/\//g, '__') + '.bak';
+                                const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
+                                const changeLogPath = `_tmldata/${flattenedBackupFileName.replace('.bak', '.md')}`;
+                
+                                // Call cleanupAfterReversionOrAcceptance with both paths.
+                                await this.cleanupAfterReversionOrAcceptance(backupPath, changeLogPath);
+                                
                                 new Notice(`Changes accepted for "${file.name}". Cleanup completed.`);
                             } catch (error) {
                                 console.error(`Error accepting changes for "${file.name}":`, error);
@@ -323,13 +331,7 @@ async linkSingleNote(file: TFile) {
     }
 }
     
-/**
- * Reverts changes made to a single note by restoring its content from a backup file.
- * This function looks for the backup file using a naming convention, restores the note's content if a backup is found,
- * and notifies the user about the outcome of the reversion process.
- * 
- * @param {TFile} file The note file to revert changes for.
- */
+
 /**
  * Reverts changes made to a single note by restoring its content from a backup file.
  * - Locates the backup file using a naming convention based on the note's path.
@@ -343,6 +345,7 @@ async revertSingleNote(file: TFile) {
     // Use the flattened naming convention to locate the backup file.
     const flattenedBackupFileName = file.path.replace(/\//g, '__') + '.bak';
     const backupPath = `_tmlbackups/${flattenedBackupFileName}`;
+    const changeLogPath = `_tmldata/${flattenedBackupFileName.replace('.bak', '.md')}`;
 
     // Attempt to locate the backup file within the _tmlbackups folder.
     const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
@@ -354,8 +357,9 @@ async revertSingleNote(file: TFile) {
             await this.app.vault.modify(file, backupContent);
             // Notify the user of successful reversion.
             new Notice(`"${file.name}" has been reverted to its previous state.`);
-            // Clean up after successful reversion.
-            await this.cleanupAfterReversionOrAcceptance(file.path);
+            
+            // Clean up after successful reversion by providing paths directly.
+            await this.cleanupAfterReversionOrAcceptance(backupPath, changeLogPath);
         } catch (error) {
             console.error(`Error reverting "${file.name}":`, error);
             new Notice(`Error reverting "${file.name}". See console for details.`);
@@ -365,6 +369,7 @@ async revertSingleNote(file: TFile) {
         new Notice(`Backup not found for "${file.name}". Reversion not possible.`);
     }
 }
+
 
     
     /**
@@ -539,21 +544,14 @@ Keeping the _tmldata folder allows you to review the 'ReviewChanges.md' file, wh
 
 /**
  * Cleans up after the reversion or acceptance of changes for a single note.
- * This involves deleting the backup file and the change log file associated with the note.
+ * This involves deleting the backup file and the change log file.
  * If the _tmlbackups and _tmldata folders become empty as a result, they are also deleted.
  * The user is notified after each successful deletion.
  *
- * @param {string} filePath - The path of the file for which changes were reverted or accepted.
+ * @param {string} backupPath - The path of the backup file to be deleted.
+ * @param {string} changeLogPath - The path of the change log file to be deleted.
  */
-async cleanupAfterReversionOrAcceptance(filePath: string) {
-    // Replace slashes with underscores to create a flattened file name.
-    // This is used to construct the backup and change log file paths.
-    const flattenedFileName = filePath.replace(/\//g, '__');
-    
-    // Construct paths for the backup and change log files using the flattened file name.
-    const backupPath = `_tmlbackups/SNC-${flattenedFileName}.bak`;
-    const changeLogPath = `_tmldata/SNC-Changes-${flattenedFileName}.md`;
-
+async cleanupAfterReversionOrAcceptance(backupPath: string, changeLogPath: string) {
     // Attempt to delete the backup file and notify the user.
     const backupFile = this.app.vault.getAbstractFileByPath(backupPath);
     if (backupFile instanceof TFile) {
